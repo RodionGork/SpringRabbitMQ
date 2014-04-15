@@ -3,8 +3,10 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:context="http://www.springframework.org/schema/context"
     xmlns:mvc="http://www.springframework.org/schema/mvc"
+    xmlns:rabbit="http://www.springframework.org/schema/rabbit"
     xsi:schemaLocation="http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
 	    http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+	    http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.0.xsd
 	    http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
     <mvc:annotation-driven/>
     <context:component-scan base-package="none.rg.springblank"/>
@@ -13,4 +15,31 @@
         <property name="prefix"><value>/WEB-INF/pages/</value></property>
         <property name="suffix"><value>.jsp</value></property>
      </bean>
+
+    <rabbit:connection-factory id="rabbitConnectionFactory" host="127.0.0.1" username="guest" password="guest"/>
+    <rabbit:admin connection-factory="rabbitConnectionFactory"/>
+
+    <rabbit:queue id="simpleRabbitQueue" name="EXAMPLE_QUEUE"/>
+    <rabbit:topic-exchange id="rabbitExchange" name="EXAMPLE_EXCHANGE">
+        <rabbit:bindings>
+            <rabbit:binding queue="simpleRabbitQueue" pattern="my.#.*"/>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+
+    <!-- this is for sender -->
+    <rabbit:template id="rabbitTemplate" connection-factory="rabbitConnectionFactory" exchange="EXAMPLE_EXCHANGE"/>
+
+    <!-- and this for receiver -->
+    <bean id="messageListenerContainer" class="org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer">
+        <property name="connectionFactory" ref="rabbitConnectionFactory"/>
+        <property name="queueNames">
+            <list><value>EXAMPLE_QUEUE</value></list>
+        </property>
+        <property name="messageListener">
+            <bean id="messageListener" class="org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter">
+                <constructor-arg index="0" ref="receiver"/>
+                <constructor-arg index="1" value="receiveMessage"/>
+            </bean>
+        </property>
+    </bean>
 </beans>
